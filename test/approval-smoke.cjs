@@ -84,6 +84,7 @@ module.exports=async({app,gate,memories,login,win,getPopup,setAccounts,getTray,f
   await evaluate(win,"document.getElementById('newGlobalMemory').click();document.getElementById('memoryTitle').value='Project terminology';document.getElementById('memoryText').value='Use the published product names in project updates.';document.getElementById('reviewMemory').click()");
   await until(()=>evaluate(win,"!!document.getElementById('confirmMemory')"));assert.equal(memories.entries.length,0);
   await evaluate(win,"document.getElementById('confirmMemory').click()");await until(()=>memories.entries.length===1);
+  await until(()=>evaluate(win,"document.getElementById('memoryList')?.textContent.includes('Project terminology')"));
   await until(()=>evaluate(win,"!!document.getElementById('newChatMemory')"));
   await evaluate(win,"document.getElementById('newChatMemory').click();document.getElementById('memoryChat').value='-100123456';document.getElementById('memoryTitle').value='Release coordination';document.getElementById('memoryText').value='Use the planning topic for release coordination.';document.getElementById('reviewMemory').click()");
   await until(()=>evaluate(win,"!!document.getElementById('confirmMemory')"));
@@ -109,7 +110,10 @@ module.exports=async({app,gate,memories,login,win,getPopup,setAccounts,getTray,f
   assert.ok(JSON.parse(vault).memoriesCipher);assert.equal(vault.includes('delivery topic for release coordination'),false);
   const savedBook=new (require('../src/memory.cjs').MemoryBook)(JSON.parse(require('electron').safeStorage.decryptString(Buffer.from(JSON.parse(vault).memoriesCipher,'base64'))));assert.deepEqual(savedBook.snapshot(),memories.snapshot());
   await evaluate(win,"document.querySelector('[data-page=notifications]').click()");await wait(150);
-  await evaluate(win,"document.querySelector('[name=privacy]').checked=true;document.getElementById('prefs').requestSubmit()");await wait(150);
+  assert.equal(await evaluate(win,"document.querySelector('[name=enabled]').checked"),true);
+  assert.equal(await evaluate(win,"document.querySelector('[name=openAtLogin]').checked"),false);
+  await evaluate(win,"document.querySelector('[name=privacy]').checked=true;document.querySelector('[name=openAtLogin]').checked=true;document.getElementById('prefs').requestSubmit()");await wait(150);
+  const preferenceVault=JSON.parse(fs.readFileSync(path.join(app.getPath('userData'),'vault.json'),'utf8'));assert.equal(preferenceVault.openAtLogin,true);assert.equal(preferenceVault.notifications.enabled,true);
   pending=gate.check('demo','1','send',{text:'Private preview'},true).catch(e=>e.message);await until(()=>toast.isVisible());await until(()=>evaluate(toast,"!!document.querySelector('#reviewPrivate')"));assert.equal(await evaluate(toast,"document.body.textContent.includes('Private preview')"),false);gate.close();await pending;
   pending=gate.check('demo','1','album',{files:[{filename:'sample.txt',base64:'U0VDUkVUX0FMQlVNX0JZVEVT'}]},true).catch(e=>e.message);await until(()=>toast.isVisible());await evaluate(toast,"document.getElementById('openRequests').click()");await wait(150);await evaluate(win,"document.querySelector('.raw-details').open=true");await wait(150);assert.equal(await evaluate(win,"document.querySelector('.raw-details pre').textContent.includes('U0VDUkVUX0FMQlVNX0JZVEVT')"),false);gate.close();await pending;
   await evaluate(win,"document.querySelector('[data-page=permissions]').click()");await wait(150);await evaluate(win,"document.getElementById('pauseGlobal').click()");await wait(150);assert.equal(gate.rules.paused,true);
